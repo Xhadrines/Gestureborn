@@ -79,13 +79,14 @@ ls -l /dev/uinput
 
 ### 6. Descarcă hand model
 
-Intră aici: https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/index#models  
+Intră aici: [Hand landmarks detection guide](https://ai.google.dev/edge/mediapipe/solutions/vision/hand_landmarker/index#models)  
 Descarcă fișierul: `hand_landmarker.task`  
 După descărcare, mută fișierul în: `app/models/hand_landmarker.task`
 
 ### 7. Descarcă face model
 
-Intră aici: https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker  
+Intră aici: [Face landmark detection guide
+](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker)  
 Descarcă fișierul: `face_landmarker.task`  
 După descărcare, mută fișierul în: `app/models/face_landmarker.task`
 
@@ -94,3 +95,5 @@ După descărcare, mută fișierul în: `app/models/face_landmarker.task`
 ```bash
 python main.py
 ```
+
+**_NOTE: Pentru detalii despre controale și gesturi, vezi [aici](gestureborn-controls.md)_**

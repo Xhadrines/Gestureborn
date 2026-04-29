@@ -1,5 +1,6 @@
-import uinput
 import time
+
+import uinput
 
 
 class MouseController:
@@ -14,16 +15,12 @@ class MouseController:
             name="Gestureborn Virtual Mouse",
         )
 
-    # -------------------------
-    # Core emit
-    # -------------------------
+    # Emit intern: trimite eveniment catre dispozitivul virtual
     def _emit(self, event, value):
         self.device.emit(event, value, syn=False)
         self.device.syn()
 
-    # -------------------------
-    # Miscari mouse
-    # -------------------------
+    # Miscari mouse: translatii pe axa X/Y
     def move_right(self, speed=1):
         self._emit(uinput.REL_X, speed)
 
@@ -36,9 +33,7 @@ class MouseController:
     def move_down(self, speed=1):
         self._emit(uinput.REL_Y, speed)
 
-    # -------------------------
-    # Click-uri scurte
-    # -------------------------
+    # Click-uri scurte: click rapid (press + release)
     def left_click_short(self, duration=0.25):
         self._emit(uinput.BTN_LEFT, 1)
         time.sleep(duration)
@@ -49,9 +44,7 @@ class MouseController:
         time.sleep(duration)
         self._emit(uinput.BTN_RIGHT, 0)
 
-    # -------------------------
-    # Click-uri lungi
-    # -------------------------
+    # Click-uri lungi: apasare prelungita pentru actiuni alternative
     def left_click_long(self, duration=0.5):
         self._emit(uinput.BTN_LEFT, 1)
         time.sleep(duration)
@@ -62,9 +55,7 @@ class MouseController:
         time.sleep(duration)
         self._emit(uinput.BTN_RIGHT, 0)
 
-    # -------------------------
-    # Hold si release click-uri
-    # -------------------------
+    # Hold / release: mentine sau elibereaza butonul
     def left_click_hold(self):
         self._emit(uinput.BTN_LEFT, 1)
 

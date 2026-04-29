@@ -4,35 +4,41 @@ Acest document definește keybinding-urile și maparea gesturilor pentru proiect
 
 ## Keyboard Controls
 
-| Action            |  Key  | Input Source | Gesture                                                           |
-| :---------------- | :---: | :----------- | :---------------------------------------------------------------- |
-| Forward           |   W   | Left Hand    | Hand move up                                                      |
-| Back              |   S   | Left Hand    | Hand move down                                                    |
-| Strafe Left       |   A   | Left Hand    | Hand move left                                                    |
-| Strafe Right      |   D   | Left Hand    | Hand move right                                                   |
-| Left Hand         |  M2   | Left Hand    | Index up                                                          |
-| Right Hand        |  M1   | Right Hand   | Index up                                                          |
-| Activate          |   E   | Right Hand   | Thumb up                                                          |
-| Ready/Sheathe     |   R   | Left Hand    | Thumb up                                                          |
-| Character Menu    |  Tab  | Both Hands   | Left palm facing up, right palm facing down (overlap gesture)     |
-| Toggle POV        |   F   | Right Hand   | Camera flip gesture (hand rotate inward)                          |
-| Jump              | Space | Right Hand   | Hand move up                                                      |
-| Sprint            |  Alt  | Right Hand   | Hand move left                                                    |
-| Shout/Power       |   Z   | Both Hands   | Palm forward                                                      |
-| Sneak             | Ctrl  | Right Hand   | Hand move down                                                    |
-| Run               | Shift | Right Hand   | Hand move right                                                   |
-| Toggle Always Run | Caps  | Both Hands   | Double thumb tap gesture                                          |
-| Auto-Move         |   C   | WIP          | WIP                                                               |
-| Favorites         |   Q   | Right Hand   | Pinch gesture (thumb + index together)                            |
-| Quicksave         |  F5   | Right Hand   | Pinky finger up                                                   |
-| Quickload         |  F9   | Left Hand    | Pinky finger up                                                   |
-| Wait              |   T   | Left Hand    | Palm forward                                                      |
-| Journal           |   J   | Both Hands   | Book opening gesture (palms facing each other, moderate distance) |
-| System Tab        |  Esc  | Both Hands   | Prayer hands                                                      |
-| Quick Inventory   |   I   | Right Hand   | Thumb right                                                       |
-| Quick Magic       |   P   | Left Hand    | Thumb left                                                        |
-| Quick Stats       |   /   | Left Hand    | Thumb down                                                        |
-| Quick Map         |   M   | Right Hand   | Thumb down                                                        |
+| Action            |  Key  | Input Source     | Gesture                                      |
+| :---------------- | :---: | :--------------- | :------------------------------------------- |
+| Forward           |   W   | Left Hand        | Hand move up                                 |
+| Back              |   S   | Left Hand        | Hand move down                               |
+| Strafe Left       |   A   | Left Hand        | Hand move left                               |
+| Strafe Right      |   D   | Left Hand        | Hand move right                              |
+| Left Hand         |  M2   | Left Hand        | Index up                                     |
+| Right Hand        |  M1   | Right Hand       | Index up                                     |
+| Activate          |   E   | WIP (IMP)        | WIP (IMP)                                    |
+| Ready/Sheathe     |   R   | WIP (IMP)        | WIP (IMP)                                    |
+| Character Menu    |  Tab  | WIP (IMP)        | WIP (IMP)                                    |
+| Toggle POV        |   F   | WIP (IMP)        | WIP (IMP)                                    |
+| Jump              | Space | Right Hand       | Hand move up                                 |
+| Sprint            |  Alt  | Right Hand       | Hand move left                               |
+| Shout/Power       |   Z   | WIP (IMP)        | WIP (IMP)                                    |
+| Sneak             | Ctrl  | Right Hand       | Hand move down                               |
+| Run               | Shift | Right Hand       | Hand move right                              |
+| Toggle Always Run | Caps  | WIP              | WIP                                          |
+| Auto-Move         |   C   | WIP              | WIP                                          |
+| Favorites         |   Q   | Right Hand - WIP | Pinch gesture (thumb + index together) - WIP |
+| Quicksave         |  F5   | Right Hand - WIP | Pinky finger up - WIP                        |
+| Quickload         |  F9   | Left Hand - WIP  | Pinky finger up - WIP                        |
+| Wait              |   T   | WIP (IMP) - WIP  | WIP (IMP) - WIP                              |
+| Journal           |   J   | WIP (IMP)        | WIP (IMP)                                    |
+| System Tab        |  Esc  | WIP (IMP)        | WIP (IMP)                                    |
+| Quick Inventory   |   I   | WIP              | WIP                                          |
+| Quick Magic       |   P   | WIP              | WIP                                          |
+| Quick Stats       |   /   | WIP              | WIP                                          |
+| Quick Map         |   M   | WIP              | WIP                                          |
+
+## Gesture de Închidere Aplicație
+
+| Action            | Input Source | Gesture                                   |
+| :---------------- | :----------: | :---------------------------------------- |
+| Close Application |  Left Hand   | Index + middle finger raised (peace sign) |
 
 ## Camera Controls
 

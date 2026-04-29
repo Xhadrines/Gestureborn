@@ -1,5 +1,6 @@
-import uinput
 import time
+
+import uinput
 
 
 class KeyboardController:
@@ -63,16 +64,12 @@ class KeyboardController:
             "M": uinput.KEY_M,
         }
 
-    # -------------------------
-    # Core emit
-    # -------------------------
+    # Emit intern: trimite eveniment de tasta catre dispozitiv
     def _emit(self, key, value):
         self.device.emit(key, value)
         self.device.syn()
 
-    # -------------------------
-    # Generic press
-    # -------------------------
+    # Apasare generica: simuleaza press + release pentru o tasta
     def press(self, key, duration=0.1):
         real_key = self.map[key.upper()]
 
@@ -80,9 +77,7 @@ class KeyboardController:
         time.sleep(duration)
         self._emit(real_key, 0)
 
-    # -------------------------
-    # Hold si release presses
-    # -------------------------
+    # Hold / release: mentine sau elibereaza tasta
     def hold(self, key):
         real_key = self.map[key.upper()]
         self._emit(real_key, 1)

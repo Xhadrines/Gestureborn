@@ -7,9 +7,11 @@ class MouseTest:
         self.mouse = MouseController()
 
     def run(self):
+        # Acorda timp pentru a muta focusul in aplicatia tinta inainte de test
         print("Ai 5 secunde sa dai focus pe Skyrim...")
         time.sleep(5)
 
+        # Ruleaza pe rand testele de miscare si click
         print("MOUSE TEST STARTED...")
 
         self.move_test()
@@ -20,6 +22,7 @@ class MouseTest:
         print("MOUSE TEST COMPLETED!")
 
     def move_test(self):
+        # Testeaza directiile de baza pentru deplasarea mouse-ului
         print("MOVE RIGHT...")
         self._hold_move(self.mouse.move_right)
 
@@ -33,12 +36,14 @@ class MouseTest:
         self._hold_move(self.mouse.move_down)
 
     def _hold_move(self, func):
+        # Trimite repetat evenimentul pentru a simula miscare continua
         start = time.time()
         while time.time() - start < 3:
             func(6)
             time.sleep(0.01)
 
     def click_short_test(self):
+        # Verifica apasarile scurte pentru click dreapta si stanga
         print("RIGHT CLICK SHORT...")
         self.mouse.right_click_short()
         time.sleep(1)
@@ -48,6 +53,7 @@ class MouseTest:
         time.sleep(1)
 
     def click_long_test(self):
+        # Verifica apasarile mai lungi, utile pentru interactiuni speciale
         print("RIGHT CLICK LONG...")
         self.mouse.right_click_long()
         time.sleep(1.5)
@@ -57,6 +63,7 @@ class MouseTest:
         time.sleep(1.5)
 
     def click_hold_test(self):
+        # Testeaza mentinerea apasata si eliberarea ulterioara a butoanelor
         print("RIGHT CLICK HOLD...")
         self.mouse.right_click_hold()
         time.sleep(5)

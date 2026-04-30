@@ -18,6 +18,9 @@ class HandGestureDetector:
 
         Returns: True daca cel putin 3 din 4 degete sunt pliate
         """
+        if not landmarks or len(landmarks) < 21:
+            return False
+
         tips = [8, 12, 16, 20]
         pip = [6, 10, 14, 18]
         folded = 0
@@ -57,6 +60,72 @@ class HandGestureDetector:
         pinky_folded = landmarks[20].y > landmarks[18].y
 
         return index_up and middle_up and ring_folded and pinky_folded
+
+    def is_open_palm(self, landmarks):
+        """Verifica daca mana este deschisa complet.
+
+        Toate cele patru degete principale trebuie sa fie ridicate.
+        Returns: True daca palma este deschisa
+        """
+        if not landmarks or len(landmarks) < 21:
+            return False
+
+        index_up = landmarks[8].y < landmarks[6].y
+        middle_up = landmarks[12].y < landmarks[10].y
+        ring_up = landmarks[16].y < landmarks[14].y
+        pinky_up = landmarks[20].y < landmarks[18].y
+
+        return index_up and middle_up and ring_up and pinky_up
+
+    def is_pinch(self, landmarks, hand_side=None):
+        """Verifica gestul cu aratator + deget mare intinse.
+
+        Conditii: aratatorul este ridicat, degetul mare este intins pe axa X,
+        iar mijlociul, inelarul si degetul mic sunt pliate.
+        Pentru mana stanga, degetul mare trebuie sa avanseze spre +X.
+        Pentru mana dreapta, degetul mare trebuie sa avanseze spre -X.
+        """
+        if not landmarks or len(landmarks) < 21:
+            return False
+
+        thumb_tip = landmarks[4]
+        thumb_mcp = landmarks[2]
+
+        index_up = landmarks[8].y < landmarks[6].y
+
+        middle_folded = landmarks[12].y > landmarks[10].y
+        ring_folded = landmarks[16].y > landmarks[14].y
+        pinky_folded = landmarks[20].y > landmarks[18].y
+
+        hand_scale = math.sqrt(
+            (landmarks[9].x - landmarks[0].x) ** 2
+            + (landmarks[9].y - landmarks[0].y) ** 2
+        )
+
+        if hand_scale <= 0:
+            return False
+
+        thumb_dx = thumb_tip.x - thumb_mcp.x
+        thumb_dy = abs(thumb_tip.y - thumb_mcp.y)
+        thumb_extended = (
+            abs(thumb_dx) > hand_scale * 0.18 and abs(thumb_dx) > thumb_dy
+        )
+
+        if hand_side == "left":
+            thumb_direction_ok = thumb_dx > hand_scale * 0.08
+        elif hand_side == "right":
+            thumb_direction_ok = thumb_dx < -(hand_scale * 0.08)
+        else:
+            thumb_direction_ok = True
+
+        return (
+            index_up
+            and middle_folded
+            and ring_folded
+            and pinky_folded
+            and thumb_extended
+            and thumb_direction_ok
+        )
 
     def get_direction(self, center, circle, deadzone):
         """Determina directia unica a mainii.

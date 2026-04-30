@@ -12,10 +12,10 @@ Acest document definește keybinding-urile și maparea gesturilor pentru proiect
 | Strafe Right      |   D   | Left Hand        | Hand move right                                 |
 | Left Hand         |  M2   | Left Hand        | Index up                                        |
 | Right Hand        |  M1   | Right Hand       | Index up                                        |
-| Activate          |   E   | Right Hand - WIP | Open palm - WIP                                 |
-| Ready/Sheathe     |   R   | Left Hand - WIP  | Open palm - WIP                                 |
-| Character Menu    |  Tab  | Left Hand - WIP  | Pinch gesture (thumb + index together) - WIP    |
-| Toggle POV        |   F   | Both Hands - WIP | Pinch gesture (thumb + index together) - WIP    |
+| Activate          |   E   | Right Hand       | Open palm                                       |
+| Ready/Sheathe     |   R   | Left Hand        | Open palm                                       |
+| Character Menu    |  Tab  | Left Hand        | Thumb + index finger raised (pinch sign)        |
+| Toggle POV        |   F   | Both Hands       | Open palm                                       |
 | Jump              | Space | Right Hand       | Hand move up                                    |
 | Sprint            |  Alt  | Right Hand       | Hand move left                                  |
 | Shout/Power       |   Z   | Both Hands - WIP | Thumbs up - WIP                                 |
@@ -23,12 +23,12 @@ Acest document definește keybinding-urile și maparea gesturilor pentru proiect
 | Run               | Shift | Right Hand       | Hand move right                                 |
 | Toggle Always Run | Caps  | WIP              | WIP                                             |
 | Auto-Move         |   C   | WIP              | WIP                                             |
-| Favorites         |   Q   | Right Hand - WIP | Pinch gesture (thumb + index together) - WIP    |
-| Quicksave         |  F5   | Right Hand - WIP | Pinky finger up - WIP                           |
-| Quickload         |  F9   | Left Hand - WIP  | Pinky finger up - WIP                           |
-| Wait              |   T   | WIP (IMP) - WIP  | WIP (IMP) - WIP                                 |
-| Journal           |   J   | Right Hand - WIP | Index + middle finger raised (peace sign) - WIP |
-| System Tab        |  Esc  | Both Hands - WIP | Open palm - WIP                                 |
+| Favorites         |   Q   | Right Hand       | Thumb + index finger raised (pinch sign)        |
+| Quicksave         |  F5   | WIP              | WIP                                             |
+| Quickload         |  F9   | WIP              | WIP                                             |
+| Wait              |   T   | Right Hand - WIP | Index + middle finger raised (peace sign) - WIP |
+| Journal           |   J   | WIP              | WIP                                             |
+| System Tab        |  Esc  | Both Hands       | Thumb + index finger raised (pinch sign)        |
 | Quick Inventory   |   I   | WIP              | WIP                                             |
 | Quick Magic       |   P   | WIP              | WIP                                             |
 | Quick Stats       |   /   | WIP              | WIP                                             |

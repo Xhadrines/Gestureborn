@@ -15,3 +15,21 @@ class KeyboardMapper:
 
     # Mana dreapta: directii mapate la taste modificator pentru actiuni
     RIGHT_MAP = {"up": "SPACE", "down": "CTRL", "left": "ALT", "right": "SHIFT"}
+
+    # Palma deschisa pe mana stanga
+    LEFT_OPEN_PRESS = "R"
+
+    # Palma deschisa pe mana dreapta
+    RIGHT_OPEN_HOLD = "E"
+
+    # Palma deschisa simultan pe ambele maini
+    BOTH_OPEN_PRESS = "F"
+
+    # Pinch pe mana stanga
+    LEFT_PINCH_PRESS = "TAB"
+
+    # Pinch pe mana dreapta
+    RIGHT_PINCH_PRESS = "Q"
+
+    # Pinch simultan pe ambele maini
+    BOTH_PINCH_PRESS = "ESC"

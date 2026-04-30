@@ -2,6 +2,7 @@
 
 Mapare gesturilor manuale la tastatura pentru comenzi in joc.
 """
+import time
 
 from ..vision import HandGestureDetector
 from ..mapping import KeyboardMapper
@@ -24,6 +25,19 @@ class HandKeyboardEngine:
         self.detector = HandGestureDetector()
         self.left_held = set()
         self.right_held = None
+        self.left_open = False
+        self.right_open = False
+        self.both_open = False
+        self.left_pinch = False
+        self.right_pinch = False
+        self.both_pinch = False
+
+        self.left_pinch_start = None
+        self.right_pinch_start = None
+        self.both_pinch_start = None
+        # Praguri separate pentru actiuni rapide si actiuni combinate
+        self.pinch_single_hold_seconds = 2.0
+        self.pinch_both_hold_seconds = 1.0
 
     def _sync_keys(self, current_keys, target_keys):
         """Sincronizeaza tastele: elibereaza cele nefiind necesare.
@@ -105,6 +119,129 @@ class HandKeyboardEngine:
                 return current_target
 
         return target
+
+    def _sync_hold_key(self, current_state, target_state, key):
+        """Mentine sau elibereaza o singura tasta in functie de stare."""
+        if target_state and not current_state:
+            self.keyboard.hold(key)
+        elif not target_state and current_state:
+            self.keyboard.release(key)
+
+        return target_state
+
+    def process_open_palms(self, left_landmarks, right_landmarks):
+        """Proceseaza palmele deschise pentru actiuni de interactiune.
+
+        Palma stanga declanseaza R o singura data la deschidere.
+        Palma dreapta mentine E cat timp ramane deschisa.
+        Cand ambele palme sunt deschise simultan, se apasa F o singura data.
+        """
+        left_open = self.detector.is_open_palm(left_landmarks)
+        right_open = self.detector.is_open_palm(right_landmarks)
+        both_open = left_open and right_open
+
+        # Cand ambele palme sunt deschise, prioritatea trece pe actiunea comuna
+        if both_open:
+            if self.right_open:
+                self.keyboard.release(KeyboardMapper.RIGHT_OPEN_HOLD)
+                self.right_open = False
+
+            if not self.both_open:
+                self.keyboard.press(KeyboardMapper.BOTH_OPEN_PRESS)
+
+            self.both_open = True
+            self.left_open = False
+            return
+
+        if self.both_open:
+            self.both_open = False
+
+        if left_open and not self.left_open:
+            self.keyboard.press(KeyboardMapper.LEFT_OPEN_PRESS)
+
+        self.left_open = left_open
+
+        self.right_open = self._sync_hold_key(
+            self.right_open,
+            right_open,
+            KeyboardMapper.RIGHT_OPEN_HOLD,
+        )
+
+    def process_pinch(self, left_landmarks, right_landmarks):
+        """Proceseaza gestul pinch pentru actiuni rapide.
+
+        Mana stanga apasa TAB o singura data la detectie.
+        Mana dreapta apasa Q o singura data la detectie.
+        Cand ambele maini fac pinch simultan, se apasa ESC o singura data.
+        """
+        left_pinch = self.detector.is_pinch(left_landmarks, "left")
+        right_pinch = self.detector.is_pinch(right_landmarks, "right")
+        both_pinch = left_pinch and right_pinch
+
+        now = time.time()
+
+        # Gestul simultan are prioritate fata de gesturile individuale
+        if both_pinch:
+            self.left_pinch_start = None
+            self.right_pinch_start = None
+
+            if self.both_pinch_start is None:
+                self.both_pinch_start = now
+
+            if now - self.both_pinch_start >= self.pinch_both_hold_seconds:
+                if not self.both_pinch:
+                    self.keyboard.press(KeyboardMapper.BOTH_PINCH_PRESS)
+                self.both_pinch = True
+                self.left_pinch = False
+                self.right_pinch = False
+            return
+
+        if self.both_pinch:
+            self.both_pinch = False
+        self.both_pinch_start = None
+
+        if left_pinch and not right_pinch:
+            if self.left_pinch_start is None:
+                self.left_pinch_start = now
+            if now - self.left_pinch_start >= self.pinch_single_hold_seconds:
+                if not self.left_pinch:
+                    self.keyboard.press(KeyboardMapper.LEFT_PINCH_PRESS)
+                self.left_pinch = True
+        else:
+            self.left_pinch_start = None
+            self.left_pinch = False
+
+        if right_pinch and not left_pinch:
+            if self.right_pinch_start is None:
+                self.right_pinch_start = now
+            if now - self.right_pinch_start >= self.pinch_single_hold_seconds:
+                if not self.right_pinch:
+                    self.keyboard.press(KeyboardMapper.RIGHT_PINCH_PRESS)
+                self.right_pinch = True
+        else:
+            self.right_pinch_start = None
+            self.right_pinch = False
+
+        if both_pinch:
+            if not self.both_pinch:
+                self.keyboard.press(KeyboardMapper.BOTH_PINCH_PRESS)
+
+            self.both_pinch = True
+            self.left_pinch = False
+            self.right_pinch = False
+            return
+
+        if self.both_pinch:
+            self.both_pinch = False
+
+        if left_pinch and not self.left_pinch:
+            self.keyboard.press(KeyboardMapper.LEFT_PINCH_PRESS)
+
+        if right_pinch and not self.right_pinch:
+            self.keyboard.press(KeyboardMapper.RIGHT_PINCH_PRESS)
+
+        self.left_pinch = left_pinch
+        self.right_pinch = right_pinch
 
     def process_left(self, landmarks, center, circle, deadzone):
         """Proceseaza mana stanga: comenzi de miscare (WASD).

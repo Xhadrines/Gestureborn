@@ -1,2 +1,2 @@
 class MouseMapper:
-    SPEED = 50
+    SPEED = 25

@@ -8,7 +8,7 @@ class KeyboardTest:
 
     def run(self):
         # Acorda timp pentru a muta focusul in aplicatia tinta inainte de test
-        print("Ai 5 secunde să dai focus pe Skyrim...")
+        print("Ai 5 secunde sa dai focus pe Skyrim...")
         time.sleep(5)
 
         # Ruleaza seturile de teste in ordine: miscare, sprint si actiuni

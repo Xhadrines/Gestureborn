@@ -1,3 +1,9 @@
+"""Componenta camera: captura video si detectie gesture pe baza frame-urilor.
+
+Gestioneaza conectarea la camera, rularea modelelor de detectie MediaPipe
+(maini si fata) si actualizarea starilor zonelor de control.
+"""
+
 import math
 
 import cv2 as cv
@@ -8,7 +14,21 @@ from mediapipe.tasks.python import vision
 
 
 class Webcam:
+    """Gestionar camera si detectie gesture video.
+
+    Capturea frame-urile de la camera, ruleaza modele MediaPipe pentru
+    detectia mainilor si fetei, si contine zona de control cu cercuri
+    de detectie si deadzone-uri. Coordoneaza cu GestureEngine pentru
+    a genera comenzi in timp real.
+    """
+
     def __init__(self, camera_id=0, engine=None):
+        """Initializeaza camera, modele si zone de control.
+
+        Args:
+            camera_id: indexul device camera (implicit: 0 = prima camera)
+            engine: instanta GestureEngine pentru procesarea gesturilor
+        """
         self.engine = engine
         self.should_close = False
 
@@ -128,6 +148,47 @@ class Webcam:
         pixel_y = int(avg_y * 720)
 
         return (pixel_x, pixel_y)
+
+    def split_hands(self, hand_landmarks):
+        """Atribuie mainile pe baza pozitiei pe ecran, nu a ordinii de detectie.
+
+        MediaPipe nu garanteaza ordinea listei de maini, asa ca folosim centrul
+        fiecarei maini pentru a decide care este in zona stanga si care in zona
+        dreapta a cadrului.
+        """
+
+        left_hand = None
+        left_center = None
+        right_hand = None
+        right_center = None
+
+        if not hand_landmarks:
+            return left_hand, left_center, right_hand, right_center
+
+        hands_by_x = []
+
+        for hand in hand_landmarks:
+            center = self.get_landmark_center(hand)
+            if center:
+                hands_by_x.append((center[0], center, hand))
+
+        if not hands_by_x:
+            return left_hand, left_center, right_hand, right_center
+
+        hands_by_x.sort(key=lambda item: item[0])
+
+        if len(hands_by_x) == 1:
+            _, center, hand = hands_by_x[0]
+            if center[0] < 640:
+                left_hand, left_center = hand, center
+            else:
+                right_hand, right_center = hand, center
+            return left_hand, left_center, right_hand, right_center
+
+        _, left_center, left_hand = hands_by_x[0]
+        _, right_center, right_hand = hands_by_x[-1]
+
+        return left_hand, left_center, right_hand, right_center
 
     def draw_circles(self, frame):
         """Deseneaza cercurile de detectie, axele si deadzone pe frame.
@@ -340,6 +401,13 @@ class Webcam:
         return True
 
     def run(self):
+        """Ruleaza bucla principala: captura, detectie si procesare gesture.
+
+        Deschide fereastra window, incepe captura video, ruleaza modele
+        MediaPipe pe fiecare frame, actualizeaza stari zone si coordoneaza
+        cu GestureEngine. Se opreste cand fereastra se inchide sau
+        cand se detecteaza Peace sign (exit gesture).
+        """
         cv.namedWindow(self.window_name, cv.WINDOW_NORMAL)
         cv.resizeWindow(self.window_name, 1280, 720)
 
@@ -402,139 +470,108 @@ class Webcam:
                     self.head_in_circle = in_circle and not in_deadzone
 
             # Verifica mainile in raport cu cercul si deadzone-ul
-            if hand_result.hand_landmarks and len(hand_result.hand_landmarks) > 0:
-                if len(hand_result.hand_landmarks) >= 1:
-                    # Prima mana, de regula mana stanga in imaginea oglindita
-                    hand_center = self.get_landmark_center(
-                        hand_result.hand_landmarks[0]
-                    )
-                    # Valideaza ca punctul central ramane in limitele cadrului
-                    if (
-                        hand_center
-                        and 0 <= hand_center[0] <= 1280
-                        and 0 <= hand_center[1] <= 720
-                    ):
-                        in_circle = self.point_in_circle(
-                            hand_center, self.left_hand_circle
-                        )
-                        in_deadzone = self.point_in_deadzone(
-                            hand_center, self.left_hand_deadzone
-                        )
-                        self.left_hand_in_deadzone = in_deadzone
-                        # Mana este in cerc doar daca se afla in zona si nu in deadzone
-                        self.left_hand_in_circle = in_circle and not in_deadzone
+            left_hand, left_center, right_hand, right_center = self.split_hands(
+                hand_result.hand_landmarks
+            )
 
-                if len(hand_result.hand_landmarks) >= 2:
-                    # A doua mana, de regula mana dreapta in imaginea oglindita
-                    hand_center = self.get_landmark_center(
-                        hand_result.hand_landmarks[1]
-                    )
-                    # Valideaza ca punctul central ramane in limitele cadrului
-                    if (
-                        hand_center
-                        and 0 <= hand_center[0] <= 1280
-                        and 0 <= hand_center[1] <= 720
-                    ):
-                        in_circle = self.point_in_circle(
-                            hand_center, self.right_hand_circle
-                        )
-                        in_deadzone = self.point_in_deadzone(
-                            hand_center, self.right_hand_deadzone
-                        )
-                        self.right_hand_in_deadzone = in_deadzone
-                        # Mana este in cerc doar daca se afla in zona si nu in deadzone
-                        self.right_hand_in_circle = in_circle and not in_deadzone
+            if (
+                left_center
+                and 0 <= left_center[0] <= 1280
+                and 0 <= left_center[1] <= 720
+            ):
+                in_circle = self.point_in_circle(left_center, self.left_hand_circle)
+                in_deadzone = self.point_in_deadzone(
+                    left_center, self.left_hand_deadzone
+                )
+                self.left_hand_in_deadzone = in_deadzone
+                # Mana este in cerc doar daca se afla in zona si nu in deadzone
+                self.left_hand_in_circle = in_circle and not in_deadzone
+
+            if (
+                right_center
+                and 0 <= right_center[0] <= 1280
+                and 0 <= right_center[1] <= 720
+            ):
+                in_circle = self.point_in_circle(right_center, self.right_hand_circle)
+                in_deadzone = self.point_in_deadzone(
+                    right_center, self.right_hand_deadzone
+                )
+                self.right_hand_in_deadzone = in_deadzone
+                # Mana este in cerc doar daca se afla in zona si nu in deadzone
+                self.right_hand_in_circle = in_circle and not in_deadzone
 
             # Deseneaza informatiile pentru maini pe frame
             if hand_result.hand_landmarks:
-                for idx, hand in enumerate(hand_result.hand_landmarks):
+                for hand, label, circle, deadzone, in_circle, in_deadzone in (
+                    (
+                        left_hand,
+                        "LH",
+                        self.left_hand_circle,
+                        self.left_hand_deadzone,
+                        self.left_hand_in_circle,
+                        self.left_hand_in_deadzone,
+                    ),
+                    (
+                        right_hand,
+                        "RH",
+                        self.right_hand_circle,
+                        self.right_hand_deadzone,
+                        self.right_hand_in_circle,
+                        self.right_hand_in_deadzone,
+                    ),
+                ):
+                    if not hand:
+                        continue
+
                     hand_center = self.get_landmark_center(hand)
-                    if hand_center:
-                        # Stabileste mana si calculeaza distantele relevante
-                        if idx == 0:  # Mana stanga
-                            if self.left_hand_in_deadzone:
-                                hand_point_color = (0, 255, 255)  # Galben
-                            elif self.left_hand_in_circle:
-                                hand_point_color = (0, 0, 255)  # Rosu
-                            else:
-                                hand_point_color = (0, 255, 0)  # Verde
+                    if not hand_center:
+                        continue
 
-                            dist_relevant = math.sqrt(
-                                (hand_center[0] - self.left_hand_circle["center"][0])
-                                ** 2
-                                + (hand_center[1] - self.left_hand_circle["center"][1])
-                                ** 2
-                            )
-                            dist_deadzone = math.sqrt(
-                                (hand_center[0] - self.left_hand_deadzone["center"][0])
-                                ** 2
-                                + (
-                                    hand_center[1]
-                                    - self.left_hand_deadzone["center"][1]
-                                )
-                                ** 2
-                            )
-                            label = "LH"
-                        else:  # Mana dreapta
-                            if self.right_hand_in_deadzone:
-                                hand_point_color = (0, 255, 255)  # Galben
-                            elif self.right_hand_in_circle:
-                                hand_point_color = (0, 0, 255)  # Rosu
-                            else:
-                                hand_point_color = (0, 255, 0)  # Verde
+                    if in_deadzone:
+                        hand_point_color = (0, 255, 255)  # Galben
+                    elif in_circle:
+                        hand_point_color = (0, 0, 255)  # Rosu
+                    else:
+                        hand_point_color = (0, 255, 0)  # Verde
 
-                            dist_relevant = math.sqrt(
-                                (hand_center[0] - self.right_hand_circle["center"][0])
-                                ** 2
-                                + (hand_center[1] - self.right_hand_circle["center"][1])
-                                ** 2
-                            )
-                            dist_deadzone = math.sqrt(
-                                (hand_center[0] - self.right_hand_deadzone["center"][0])
-                                ** 2
-                                + (
-                                    hand_center[1]
-                                    - self.right_hand_deadzone["center"][1]
-                                )
-                                ** 2
-                            )
-                            label = "RH"
+                    dist_relevant = math.sqrt(
+                        (hand_center[0] - circle["center"][0]) ** 2
+                        + (hand_center[1] - circle["center"][1]) ** 2
+                    )
+                    dist_deadzone = math.sqrt(
+                        (hand_center[0] - deadzone["center"][0]) ** 2
+                        + (hand_center[1] - deadzone["center"][1]) ** 2
+                    )
 
-                        # Deseneaza centrul mainii cu culoarea zonei curente
-                        cv.circle(frame, hand_center, 8, hand_point_color, -1)
+                    # Deseneaza centrul mainii cu culoarea zonei curente
+                    cv.circle(frame, hand_center, 8, hand_point_color, -1)
 
-                        # Afiseaza pozitia mainii si distantele utile
-                        cv.putText(
-                            frame,
-                            f"{label}: ({hand_center[0]}, {hand_center[1]})",
-                            (hand_center[0] - 80, hand_center[1] - 30),
-                            cv.FONT_HERSHEY_SIMPLEX,
-                            0.5,
-                            hand_point_color,
-                            1,
-                        )
-                        cv.putText(
-                            frame,
-                            f"Dist: {int(dist_relevant)}, DZ: {int(dist_deadzone)}",
-                            (hand_center[0] - 80, hand_center[1] - 10),
-                            cv.FONT_HERSHEY_SIMPLEX,
-                            0.5,
-                            hand_point_color,
-                            1,
-                        )
+                    # Afiseaza pozitia mainii si distantele utile
+                    cv.putText(
+                        frame,
+                        f"{label}: ({hand_center[0]}, {hand_center[1]})",
+                        (hand_center[0] - 80, hand_center[1] - 30),
+                        cv.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        hand_point_color,
+                        1,
+                    )
+                    cv.putText(
+                        frame,
+                        f"Dist: {int(dist_relevant)}, DZ: {int(dist_deadzone)}",
+                        (hand_center[0] - 80, hand_center[1] - 10),
+                        cv.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        hand_point_color,
+                        1,
+                    )
 
                     # Deseneaza fiecare landmark al mainii
                     for lm in hand:
                         x = int(lm.x * frame.shape[1])
                         y = int(lm.y * frame.shape[0])
 
-                        cv.circle(
-                            frame,
-                            (x, y),
-                            5,
-                            (0, 255, 0),
-                            -1,
-                        )
+                        cv.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
             # Deseneaza landmark-urile fetei
             if face_result.face_landmarks:

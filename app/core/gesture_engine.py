@@ -1,10 +1,31 @@
+"""Engine central de procesare gesturi.
+
+Orchestreaza toti engine-urile de control (mouse, tastatura, hold)
+si coordoneaza comunicarea intre detectare si executie actiuni.
+"""
+
 from .hand_keyboard_engine import HandKeyboardEngine
 from .head_mouse_engine import HeadMouseEngine
 from .mouse_hold_engine import MouseHoldEngine
 
 
 class GestureEngine:
+    """Orchestrator principal pentru gesturi detectate.
+
+    Coordoneaza engine-urile pentru:
+    - Miscare mouse controlata de cap (HeadMouseEngine)
+    - Apasari mouse cu degete (MouseHoldEngine)
+    - Comenzi tastatura cu maini (HandKeyboardEngine)
+    """
+
     def __init__(self, mouse, keyboard, webcam):
+        """Initializeaza engine-ul cu controllere si camera.
+
+        Args:
+            mouse: MouseController pentru comenzi mouse
+            keyboard: KeyboardController pentru comenzi tastatura
+            webcam: Webcam instance cu informatii detectie
+        """
         self.mouse_engine = HeadMouseEngine(mouse)
         self.mouse_hold_engine = MouseHoldEngine(mouse)
         self.hand_engine = HandKeyboardEngine(keyboard)
@@ -20,42 +41,34 @@ class GestureEngine:
                 self.webcam.head_deadzone,
             )
 
-        left_hand = None
-        right_hand = None
+        left_hand, left_center, right_hand, right_center = self.webcam.split_hands(
+            hand_result.hand_landmarks
+        )
 
-        if hand_result.hand_landmarks:
-            if len(hand_result.hand_landmarks) >= 1:
-                left_hand = hand_result.hand_landmarks[0]
-                left_center = self.webcam.get_landmark_center(left_hand)
-                if left_center:
-                    if self.mouse_hold_engine.detector.is_peace_sign(left_hand):
-                        self.webcam.should_close = True
-                        self.mouse_hold_engine.process_left([])
-                        self.mouse_hold_engine.process_right([])
-                        return
+        if left_hand and left_center:
+            if self.mouse_hold_engine.detector.is_peace_sign(left_hand):
+                self.webcam.should_close = True
+                self.mouse_hold_engine.process_left([])
+                self.mouse_hold_engine.process_right([])
+                return
 
-                    self.hand_engine.process_left(
-                        left_hand,
-                        left_center,
-                        self.webcam.left_hand_circle,
-                        self.webcam.left_hand_deadzone,
-                    )
-                    self.mouse_hold_engine.process_left(left_hand)
-
-            if len(hand_result.hand_landmarks) >= 2:
-                right_hand = hand_result.hand_landmarks[1]
-                right_center = self.webcam.get_landmark_center(right_hand)
-                if right_center:
-                    self.hand_engine.process_right(
-                        right_hand,
-                        right_center,
-                        self.webcam.right_hand_circle,
-                        self.webcam.right_hand_deadzone,
-                    )
-                    self.mouse_hold_engine.process_right(right_hand)
-
-        if not left_hand:
+            self.hand_engine.process_left(
+                left_hand,
+                left_center,
+                self.webcam.left_hand_circle,
+                self.webcam.left_hand_deadzone,
+            )
+            self.mouse_hold_engine.process_left(left_hand)
+        else:
             self.mouse_hold_engine.process_left([])
 
-        if not right_hand:
+        if right_hand and right_center:
+            self.hand_engine.process_right(
+                right_hand,
+                right_center,
+                self.webcam.right_hand_circle,
+                self.webcam.right_hand_deadzone,
+            )
+            self.mouse_hold_engine.process_right(right_hand)
+        else:
             self.mouse_hold_engine.process_right([])

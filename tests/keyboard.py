@@ -1,14 +1,40 @@
+"""Module de teste pentru KeyboardController.
+
+Verifica functionalitatea:
+- Apasari WASD pentru miscare
+- Combinatii tasta pentru sprint (W + ALT)
+- Taste de actiune (TAB, ESC, SPACE, CTRL)
+
+NOTA: Necesita focus pe aplicatia tinta (ex: Skyrim) inainte de test.
+"""
+
 from app.controller.keyboard import KeyboardController
 import time
 
 
 class KeyboardTest:
+    """Suite de teste pentru KeyboardController.
+
+    Testeaza:
+    - Apasari WASD cu hold/release
+    - Combinatii tasta (W + ALT pentru sprint)
+    - Taste actiuni (TAB, ESC, SPACE, CTRL)
+    """
+
     def __init__(self):
+        """Initializeaza dispozitivul tastatura virtual."""
+
         self.kb = KeyboardController()
 
     def run(self):
+        """Executa suita completa de teste in ordine.
+
+        Se asteapta 5 secunde pentru a permite focus pe aplicatia tinta
+        inainte de a incepe testele.
+        """
+
         # Acorda timp pentru a muta focusul in aplicatia tinta inainte de test
-        print("Ai 5 secunde sa dai focus pe Skyrim...")
+        print("Ai 5 secunde sa dai focus pe aplicatia tinta...")
         time.sleep(5)
 
         # Ruleaza seturile de teste in ordine: miscare, sprint si actiuni
@@ -21,7 +47,11 @@ class KeyboardTest:
         print("KEYBOARD TEST COMPLETED!")
 
     def test_movement(self):
-        # Verifica apasarea prelungita pe WASD
+        """Verifica apasarea prelungita pe WASD.
+
+        Testeaza fiecare directie timp de 3 secunde.
+        """
+
         print("TEST WASD HOLD MOVEMENT...")
 
         print("MOVE FORWARD (W)...")
@@ -37,14 +67,28 @@ class KeyboardTest:
         self._hold_key("D", duration=3)
 
     def _hold_key(self, key, duration=3):
-        # Apasa tasta, mentine-o activata si apoi o elibereaza
+        """Helper: apasa tasta, mentine-o activata si apoi o elibereaza.
+
+        Args:
+            key: nume tasta (ex: 'W', 'A')
+            duration: timp mentinere in secunde
+        """
+
         self.kb.hold(key)
         time.sleep(duration)
         self.kb.release(key)
 
     def test_sprint(self):
-        # Simuleaza combinatia de sprint: W tinut si ALT activat
-        print("TEST SPRINT...")
+        """Simuleaza combinatia de taste pentru sprint: W tinut + ALT activat.
+
+        Testul:
+        1. Apasa si tine W (forward)
+        2. Apasa ALT (modifier pentru sprint)
+        3. Asteapta 3 secunde
+        4. Elibereaza W
+        """
+
+        print("TEST SPRINT (W + ALT)...")
 
         print("HOLD W...")
         self.kb.hold("W")
@@ -58,26 +102,34 @@ class KeyboardTest:
         self.kb.release("W")
 
     def test_actions(self):
-        # Verifica tastele de actiune folosite frecvent in joc
+        """Verifica tastele de actiune folosite frecvent in jocuri.
+
+        Testeaza:
+        - TAB (inventar)
+        - ESC (meniu/cancel)
+        - SPACE (jump/interact)
+        - CTRL (crouch/sneak)
+        """
+
         print("TEST ACTION KEYS...")
 
-        print("PRESS TAB...")
+        print("PRESS TAB (inventar)...")
         self.kb.press("TAB")
         time.sleep(0.5)
 
-        print("PRESS ESC...")
+        print("PRESS ESC (meniu)...")
         self.kb.press("ESC")
         time.sleep(0.5)
 
-        print("PRESS SPACE...")
+        print("PRESS SPACE (jump)...")
         self.kb.press("SPACE")
         time.sleep(1)
 
-        print("PRESS CTRL...")
+        print("PRESS CTRL (crouch)...")
         self.kb.press("CTRL")
         time.sleep(1)
 
-        print("PRESS CTRL...")
+        print("PRESS CTRL (uncrouch)...")
         self.kb.press("CTRL")
         time.sleep(1)
 

@@ -1,10 +1,30 @@
+"""Controller pentru dispozitiv virtual de tastatura.
+
+Implementeaza emitere de evenimente de tastatura catre sistemul de operare
+prin intermediul uinput. Suporta atât apasari scurte cat si apasari
+prelungite (hold/release) pentru simulare input real.
+"""
+
 import time
 
 import uinput
 
 
 class KeyboardController:
+    """Controleaza un dispozitiv virtual de tastatura.
+
+    Mapare taste logice la coduri uinput si emit de evenimente
+    pentru simulare input de tastatura la nivel sistem.
+    """
+
     def __init__(self):
+        """Initializeaza dispozitivul virtual de tastatura.
+
+        Configureaza toate tastele suportate si construieste mapare
+        intre numele taste si coduri uinput.
+        """
+
+        # Lista completa de taste suportate de dispozitiv
         self.device = uinput.Device(
             [
                 uinput.KEY_W,
@@ -20,22 +40,24 @@ class KeyboardController:
                 uinput.KEY_Z,
                 uinput.KEY_LEFTCTRL,
                 uinput.KEY_LEFTSHIFT,
-                uinput.KEY_CAPSLOCK,
-                uinput.KEY_C,
+                uinput.KEY_CAPSLOCK,  # nu e folosit
+                uinput.KEY_C,  # nu e folosit
                 uinput.KEY_Q,
-                uinput.KEY_F5,
-                uinput.KEY_F9,
+                uinput.KEY_F5,  # nu e folosit
+                uinput.KEY_F9,  # nu e folosit
                 uinput.KEY_T,
-                uinput.KEY_J,
+                uinput.KEY_J,  # nu e folosit
                 uinput.KEY_ESC,
-                uinput.KEY_I,
-                uinput.KEY_P,
-                uinput.KEY_SLASH,
-                uinput.KEY_M,
+                uinput.KEY_I,  # nu e folosit
+                uinput.KEY_P,  # nu e folosit
+                uinput.KEY_SLASH,  # nu e folosit
+                uinput.KEY_M,  # nu e folosit
+                uinput.KEY_ENTER,
             ],
             name="Gestureborn Virtual Keyboard",
         )
 
+        # Mapare nume taste (stringuri) la coduri uinput
         self.map = {
             "W": uinput.KEY_W,
             "A": uinput.KEY_A,
@@ -50,38 +72,66 @@ class KeyboardController:
             "Z": uinput.KEY_Z,
             "CTRL": uinput.KEY_LEFTCTRL,
             "SHIFT": uinput.KEY_LEFTSHIFT,
-            "CAPS": uinput.KEY_CAPSLOCK,
-            "C": uinput.KEY_C,
+            "CAPS": uinput.KEY_CAPSLOCK,  # nu e folosit
+            "C": uinput.KEY_C,  # nu e folosit
             "Q": uinput.KEY_Q,
-            "F5": uinput.KEY_F5,
-            "F9": uinput.KEY_F9,
+            "F5": uinput.KEY_F5,  # nu e folosit
+            "F9": uinput.KEY_F9,  # nu e folosit
             "T": uinput.KEY_T,
-            "J": uinput.KEY_J,
+            "J": uinput.KEY_J,  # nu e folosit
             "ESC": uinput.KEY_ESC,
-            "I": uinput.KEY_I,
-            "P": uinput.KEY_P,
-            "/": uinput.KEY_SLASH,
-            "M": uinput.KEY_M,
+            "I": uinput.KEY_I,  # nu e folosit
+            "P": uinput.KEY_P,  # nu e folosit
+            "/": uinput.KEY_SLASH,  # nu e folosit
+            "M": uinput.KEY_M,  # nu e folosit
+            "ENTER": uinput.KEY_ENTER,
         }
 
-    # Emit intern: trimite eveniment de tasta catre dispozitiv
     def _emit(self, key, value):
-        self.device.emit(key, value)
-        self.device.syn()
+        """Emit eveniment tasta catre dispozitivul virtual.
 
-    # Apasare generica: simuleaza press + release pentru o tasta
+        Args:
+            key: cod uinput KEY_*
+            value: 1 pentru press, 0 pentru release
+        """
+
+        self.device.emit(key, value)
+        self.device.syn()  # Sincronizeaza evenimentul
+
     def press(self, key, duration=0.1):
+        """Apasa si elibereaza o tasta (press + release).
+
+        Simuleaza apasarea rapida a unei taste.
+
+        Args:
+            key: nume tasta (ex: 'W', 'TAB', 'ESC')
+            duration: timp mentinere in secunde (implicit 0.1s)
+        """
+
         real_key = self.map[key.upper()]
 
+        # Press
         self._emit(real_key, 1)
         time.sleep(duration)
+        # Release
         self._emit(real_key, 0)
 
-    # Hold / release: mentine sau elibereaza tasta
     def hold(self, key):
+        """Mentine tasta apasata (fara release automat).
+
+        Args:
+            key: nume tasta
+        """
+
         real_key = self.map[key.upper()]
         self._emit(real_key, 1)
 
     def release(self, key):
+        """Elibereaza o tasta anterioe mentinuta.
+
+        Args:
+            key: nume tasta
+        """
+
         real_key = self.map[key.upper()]
         self._emit(real_key, 0)

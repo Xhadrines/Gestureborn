@@ -14,33 +14,46 @@ from mediapipe.tasks.python import vision
 
 
 class Webcam:
-    """Gestionar camera si detectie gesture video.
+    """Gestionar de camera si detectie gesturi video.
 
-    Capturea frame-urile de la camera, ruleaza modele MediaPipe pentru
+    Capturarea frame-urile de la camera, ruleaza modele MediaPipe pentru
     detectia mainilor si fetei, si contine zona de control cu cercuri
     de detectie si deadzone-uri. Coordoneaza cu GestureEngine pentru
     a genera comenzi in timp real.
     """
 
     def __init__(self, camera_id=0, engine=None):
-        """Initializeaza camera, modele si zone de control.
+        """Initializeaza camera, modele MediaPipe si zone de control.
+
+        Configureaza:
+        - Dispozitivul camera cu rezolutie fixa
+        - Modele MediaPipe pentru detectie maini si fata
+        - Cercuri de detectie si deadzone-uri pentru fiecare zona de control
 
         Args:
             camera_id: indexul device camera (implicit: 0 = prima camera)
             engine: instanta GestureEngine pentru procesarea gesturilor
         """
+
+        # Referinta la engine-ul de procesare geste (setata extern de aplicatie)
         self.engine = engine
+        # Flag pentru inchiderea loop-ului principal (setata de gesture Peace sign)
         self.should_close = False
 
+        # Initializare camera
         self.cap = cv.VideoCapture(camera_id)
 
-        # Setari camera: rezolutie fixa si format MJPG pentru stabilitate
+        # Setari camera: rezolutie fixa, format MJPG pentru stabilitate
         self.cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc(*"MJPG"))
         self.cap.set(cv.CAP_PROP_FRAME_WIDTH, 1280)
         self.cap.set(cv.CAP_PROP_FRAME_HEIGHT, 720)
         self.cap.set(cv.CAP_PROP_FPS, 30)
 
-        # Initializare model: detectie maini pentru coordonarea gesturilor
+        # ================================================================
+        # MODELE MEDIAPIPE: DETECTIE MAINI SI FATA
+        # ================================================================
+        # Model: detectie maini pentru coordonarea gesturilor
+        # MediaPipe Hand Landmarker: 21 puncte per mana
         hand_base_options = python.BaseOptions(
             model_asset_path="app/models/hand_landmarker.task"
         )
@@ -48,12 +61,13 @@ class Webcam:
         hand_options = vision.HandLandmarkerOptions(
             base_options=hand_base_options,
             running_mode=vision.RunningMode.VIDEO,
-            num_hands=2,
+            num_hands=2,  # Detectie maxim 2 maini
         )
 
         self.hand_detector = vision.HandLandmarker.create_from_options(hand_options)
 
-        # Initializare model: detectie fata pentru pozitia capului
+        # Model: detectie fata pentru pozitia capului
+        # MediaPipe Face Landmarker: ? puncte per fata
         face_base_options = python.BaseOptions(
             model_asset_path="app/models/face_landmarker.task"
         )
@@ -61,29 +75,38 @@ class Webcam:
         face_options = vision.FaceLandmarkerOptions(
             base_options=face_base_options,
             running_mode=vision.RunningMode.VIDEO,
-            num_faces=1,
+            num_faces=1,  # Detectie o singura fata
         )
 
         self.face_detector = vision.FaceLandmarker.create_from_options(face_options)
 
+        # Nume fereastra pentru afisare video
         self.window_name = "Gestureborn"
 
-        # Zone de detectie: centre fixe si raze pentru fiecare regiune
+        # ================================================================
+        # ZONE DE DETECTIE: CERCURI SI DEADZONE-URI
+        # ================================================================
+        # Cap: zona centrala pentru control mouse cu cap
         self.head_circle = {"center": (640, 300), "radius": 200}
+        # Maini: zone laterale pentru control tastatura
         self.left_hand_circle = {"center": (200, 500), "radius": 280}
         self.right_hand_circle = {"center": (1080, 500), "radius": 280}
 
-        # Deadzone: zona neutra in care nu se declanseaza actiuni
+        # Deadzone-uri: zone neutre in care nu se declanseaza actiuni
+        # Previne tremurat accidental in zona centrala
         self.head_deadzone = {"center": (640, 300), "radius": 25}
         self.left_hand_deadzone = {"center": (200, 500), "radius": 50}
         self.right_hand_deadzone = {"center": (1080, 500), "radius": 50}
 
-        # Stare cercuri: indica daca landmark-urile sunt in zonele active
+        # ================================================================
+        # STARI DETECTIE: MARCHEAZA POZITIONAREA LANDMARK-URILOR
+        # ================================================================
+        # Stari cerc: indica daca landmark-urile sunt in zonele active
         self.head_in_circle = False
         self.left_hand_in_circle = False
         self.right_hand_in_circle = False
 
-        # Stare deadzone: marcheaza pozitionarea in zona neutra
+        # Stari deadzone: marcheaza pozitionarea in zona neutra
         self.head_in_deadzone = False
         self.left_hand_in_deadzone = False
         self.right_hand_in_deadzone = False
@@ -91,13 +114,16 @@ class Webcam:
     def point_in_circle(self, point, circle):
         """Verifica daca un punct se afla in interiorul unui cerc.
 
+        Calculeaza distanta euclidiana de la punct la centrul cercului.
+
         Args:
             point: tupla (x, y) in coordonate pixel
             circle: dict continand 'center' (x, y) si 'radius'
 
-        Returneaza:
+        Returns:
             bool: True daca punctul este in interiorul cercului
         """
+
         x, y = point
         center_x, center_y = circle["center"]
         radius = circle["radius"]
@@ -108,7 +134,14 @@ class Webcam:
     def point_in_deadzone(self, point, deadzone):
         """Verifica daca un punct este in deadzone (zona neutrala).
 
-        Returneaza True daca punctul este in zona neutrala.
+        Deadzone e utilizata pentru a preveni tremuratul in zona centrala.
+
+        Args:
+            point: tupla (x, y) pozitia in pixeli
+            deadzone: dict cu 'center' si 'radius'
+
+        Returns:
+            bool: True daca punctul este in deadzone
         """
 
         return self.point_in_circle(point, deadzone)
@@ -116,8 +149,16 @@ class Webcam:
     def get_position_offset(self, point, circle):
         """Calculeaza offsetul fata de centrul cercului (pentru vizualizare axe).
 
-        Returneaza (offset_x, offset_y) in pixeli.
+        Util pentru debug si afisare axelor de referinta pe frame.
+
+        Args:
+            point: tupla (x, y) pozitia in pixeli
+            circle: dict cu 'center'
+
+        Returns:
+            tupla: (offset_x, offset_y) in pixeli
         """
+
         x, y = point
         center_x, center_y = circle["center"]
         offset_x = x - center_x
@@ -127,9 +168,16 @@ class Webcam:
     def get_landmark_center(self, landmarks):
         """Calculeaza punctul central pentru un set de landmarks.
 
-        Primeste lista de landmarks (coordonate normalizate) si
-        returneaza coordonate in pixeli raportate la rezolutia frame-ului.
+        Mediaza coordonatele normalizate ale tuturor landmark-urilor
+        si converteste la coordonate pixel raportate la dimensiunea frame-ului.
+
+        Args:
+            landmarks: lista de NormalizedLandmark (coordonate 0-1)
+
+        Returns:
+            tupla: (pixel_x, pixel_y) in coordonate frame, sau None
         """
+
         if not landmarks:
             return None
 
@@ -150,11 +198,17 @@ class Webcam:
         return (pixel_x, pixel_y)
 
     def split_hands(self, hand_landmarks):
-        """Atribuie mainile pe baza pozitiei pe ecran, nu a ordinii de detectie.
+        """Atribuie mainile pe baza pozitiei pe ecran, nu a ordinii detectie.
 
-        MediaPipe nu garanteaza ordinea listei de maini, asa ca folosim centrul
-        fiecarei maini pentru a decide care este in zona stanga si care in zona
-        dreapta a cadrului.
+        MediaPipe nu garanteaza ordinea listei de maini (stanga vs dreapta).
+        Solutie: sorteaza mainile pe baza pozitiei X a centrului.
+
+        Args:
+            hand_landmarks: lista de obiecte mana cu landmark-uri
+
+        Returns:
+            tupla: (left_hand, left_center, right_hand, right_center)
+                   sau (None, None, None, None) daca nu sunt maini detectate
         """
 
         left_hand = None
@@ -191,10 +245,17 @@ class Webcam:
         return left_hand, left_center, right_hand, right_center
 
     def draw_circles(self, frame):
-        """Deseneaza cercurile de detectie, axele si deadzone pe frame.
+        """Deseneaza cercurile de detectie, axele si deadzone-uri pe frame.
+
+        Afiseaza vizual:
+        - Cercuri de detectie pentru cap si maini
+        - Axe de referinta pentru fiecare zona
+        - Deadzone-uri (zone neutre)
+        - Culori dinamice: galben (deadzone), rosu (detectie), normal (inactiv)
+        - Text debug cu stari detectie
 
         Args:
-            frame: frame video BGR
+            frame: frame video BGR unde se deseneaza
         """
 
         # Culoare cerc cap: galben=deadzone, rosu=detectie, altfel=normal
@@ -391,8 +452,11 @@ class Webcam:
     def are_all_detected_in_circles(self):
         """Verifica daca elementele detectate sunt in zonele cerute.
 
-        Head trebuie detectat si sa se afle in cercul dedicat; mainile raman optionale.
-        Returneaza True daca conditiile minime sunt indeplinite.
+        Conditie: capul trebuie detectat si sa se afle in cercul dedicat.
+        Mainile sunt optionale.
+
+        Returns:
+            bool: True daca conditiile minime sunt indeplinite
         """
 
         if not self.head_in_circle:
@@ -403,11 +467,20 @@ class Webcam:
     def run(self):
         """Ruleaza bucla principala: captura, detectie si procesare gesture.
 
-        Deschide fereastra window, incepe captura video, ruleaza modele
-        MediaPipe pe fiecare frame, actualizeaza stari zone si coordoneaza
-        cu GestureEngine. Se opreste cand fereastra se inchide sau
-        cand se detecteaza Peace sign (exit gesture).
+        Componenta principal care:
+        1. Captura frame-uri de la camera
+        2. Ruleaza modele MediaPipe pentru detectie maini si fata
+        3. Atualizeaza stari zone de control
+        4. Coordoneaza cu GestureEngine pentru procesare
+        5. Deseneaza vizualizari debug
+        6. Afiseaza frame pe ecran
+
+        Se opreste cand:
+        - Fereastra se inchide
+        - Se detecteaza Peace sign (iesire gesture)
+        - Camera inchide conexiunea
         """
+
         cv.namedWindow(self.window_name, cv.WINDOW_NORMAL)
         cv.resizeWindow(self.window_name, 1280, 720)
 

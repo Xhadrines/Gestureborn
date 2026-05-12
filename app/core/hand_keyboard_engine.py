@@ -34,6 +34,15 @@ class HandKeyboardEngine:
         # Mana dreapta: o singura tasta bloc (inertie pentru stabilitate)
         self.right_held = None
 
+        # Mod pentru WASD mana stanga:
+        # False = hold continuu, True = tap pe directia dominanta
+        self.left_wasd_tap_mode = False
+        self.left_tap_last_key = None
+        self.left_tap_last_press_time = 0
+        self.left_tap_needs_reset = False
+        self.left_tap_repeat_seconds = 0.5
+        self.left_tap_far_multiplier = 2.0
+
         # ================================================================
         # GESTUL PALM DESCHIS (OPEN PALM)
         # ================================================================
@@ -238,6 +247,107 @@ class HandKeyboardEngine:
 
         return target_state
 
+    def _reset_left_tap_state(self):
+        """Reseteaza starea interna pentru modul tap WASD al mainii stangi."""
+
+        self.left_tap_last_key = None
+        self.left_tap_last_press_time = 0
+        self.left_tap_needs_reset = False
+
+    def _set_left_wasd_tap_mode(self, enabled):
+        """Seteaza modul WASD pentru mana stanga si sincronizeaza starea tap."""
+
+        self.left_wasd_tap_mode = enabled
+        self._reset_left_tap_state()
+        if enabled:
+            self.left_held = self._sync_keys(self.left_held, set())
+
+    def _toggle_left_wasd_tap_mode(self):
+        """Comuta modul WASD al mainii stangi intre hold si tap."""
+
+        self._set_left_wasd_tap_mode(not self.left_wasd_tap_mode)
+
+    def _get_single_axis_target(self, center, circle, deadzone):
+        """Alege o singura tasta WASD pe axa dominanta (fara diagonale).
+
+        In modul tap, directia trebuie sa fie strict una singura. Daca deplasarea
+        depaseste deadzone pe ambele axe, se alege axa cu magnitudine mai mare.
+
+        Returns:
+            str: una dintre tastele WASD, sau None pentru neutral/outside.
+        """
+
+        direction = self.detector.get_direction(center, circle, deadzone)
+        if direction in ("neutral", "outside"):
+            return None
+
+        cx, cy = circle["center"]
+        x, y = center
+        dx = x - cx
+        dy = y - cy
+        radius = deadzone["radius"]
+        horizontal_strength = abs(dx)
+        vertical_strength = abs(dy)
+
+        if horizontal_strength <= radius and vertical_strength <= radius:
+            return None
+
+        if horizontal_strength >= vertical_strength:
+            if horizontal_strength <= radius:
+                return None
+            return "D" if dx > 0 else "A"
+
+        if vertical_strength <= radius:
+            return None
+        return "S" if dy > 0 else "W"
+
+    def _process_left_tap_mode(self, center, circle, deadzone, now):
+        """Proceseaza WASD in modul tap pentru mana stanga.
+
+        Comportament:
+        - directie unica pe axa dominanta;
+        - langa deadzone: un singur tap pana la reset (revenire in neutral/outside);
+        - departe de deadzone: repetare la interval fix.
+        """
+
+        self.left_held = self._sync_keys(self.left_held, set())
+
+        target_key = self._get_single_axis_target(center, circle, deadzone)
+        if not target_key:
+            self._reset_left_tap_state()
+            return
+
+        cx, cy = circle["center"]
+        x, y = center
+        dx = x - cx
+        dy = y - cy
+
+        if target_key in ("A", "D"):
+            dominant_strength = abs(dx)
+        else:
+            dominant_strength = abs(dy)
+
+        far_threshold = deadzone["radius"] * self.left_tap_far_multiplier
+        is_far = dominant_strength >= far_threshold
+
+        if target_key != self.left_tap_last_key:
+            self.keyboard.press(target_key)
+            self.left_tap_last_key = target_key
+            self.left_tap_last_press_time = now
+            self.left_tap_needs_reset = not is_far
+            return
+
+        if self.left_tap_needs_reset and not is_far:
+            return
+
+        if not is_far:
+            self.left_tap_needs_reset = True
+            return
+
+        if now - self.left_tap_last_press_time >= self.left_tap_repeat_seconds:
+            self.keyboard.press(target_key)
+            self.left_tap_last_press_time = now
+
     def process_open_palms(self, left_landmarks, right_landmarks):
         """Proceseaza palmele deschise pentru actiuni de interactiune.
 
@@ -334,9 +444,12 @@ class HandKeyboardEngine:
     def process_thumb(self, left_landmarks, right_landmarks):
         """Proceseaza gestul thumb pentru actiuni rapide.
 
-        Mana stanga apasa TAB o singura data la detectie.
-        Mana dreapta apasa Q o singura data la detectie.
-        Cand ambele maini fac thumb simultan, se apasa ESC o singura data.
+        Mana stanga apasa TAB o singura data la detectie si comuta
+        modul WASD pentru mana stanga (hold <-> tap).
+        Mana dreapta apasa Q o singura data la detectie si comuta
+        acelasi mod WASD pentru mana stanga.
+        Cand ambele maini fac thumb simultan, se apasa ESC o singura data
+        si modul WASD revine fortat la hold normal.
         """
 
         left_thumb = self.detector.is_thumb(left_landmarks, "left")
@@ -365,6 +478,7 @@ class HandKeyboardEngine:
 
             if not self.both_thumb:
                 self.keyboard.press(KeyboardMapper.BOTH_THUMB_PRESS)
+                self._set_left_wasd_tap_mode(False)
             self.both_thumb = True
             self.left_thumb = False
             self.right_thumb = False
@@ -383,6 +497,7 @@ class HandKeyboardEngine:
 
             if not self.left_thumb:
                 self.keyboard.press(KeyboardMapper.LEFT_THUMB_PRESS)
+                self._toggle_left_wasd_tap_mode()
             self.left_thumb = True
             self.right_thumb = False
             self.both_thumb = False
@@ -401,6 +516,7 @@ class HandKeyboardEngine:
 
             if not self.right_thumb:
                 self.keyboard.press(KeyboardMapper.RIGHT_THUMB_PRESS)
+                self._toggle_left_wasd_tap_mode()
             self.right_thumb = True
             self.left_thumb = False
             self.both_thumb = False
@@ -416,6 +532,8 @@ class HandKeyboardEngine:
 
         Verifica daca mana este in configuratie valida (pumn sau index ridicat)
         si activeaza taste directionale dupa pozitia mainii in zonele de detectie.
+        In modul normal tine tastele apasate, iar in modul tap apasa o singura
+        tasta pe axa dominanta cu repetare controlata cand mana este departe.
 
         Args:
             landmarks: lista de 21 landmark-uri
@@ -429,10 +547,18 @@ class HandKeyboardEngine:
             or self.detector.is_index_finger_up(landmarks)
         ):
             self.left_held = self._sync_keys(self.left_held, set())
+            self._reset_left_tap_state()
+            return
+
+        now = time.time()
+
+        if self.left_wasd_tap_mode:
+            self._process_left_tap_mode(center, circle, deadzone, now)
             return
 
         target_keys = self._get_axis_targets(center, circle, deadzone)
         self.left_held = self._sync_keys(self.left_held, target_keys)
+        self._reset_left_tap_state()
 
     def process_right(self, landmarks, center, circle, deadzone):
         """Proceseaza mana dreapta: comenzi bloc (SPACE, CTRL, ALT, SHIFT).

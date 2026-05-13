@@ -1,7 +1,8 @@
-"""Componenta camera: captura video si detectie gesture pe baza frame-urilor.
+"""Componenta camera: captura video si detectie de gesturi pe baza frame-urilor.
 
 Gestioneaza conectarea la camera, rularea modelelor de detectie MediaPipe
-(maini si fata) si actualizarea starilor zonelor de control.
+(maini si fata), actualizarea starilor zonelor de control si
+cenzura vizuala a fetei in overlay.
 """
 
 import math
@@ -19,7 +20,8 @@ class Webcam:
     Capturarea frame-urile de la camera, ruleaza modele MediaPipe pentru
     detectia mainilor si fetei, si contine zona de control cu cercuri
     de detectie si deadzone-uri. Coordoneaza cu GestureEngine pentru
-    a genera comenzi in timp real.
+    a genera comenzi in timp real si poate aplica cenzura vizuala
+    in zona fetei pentru privacy.
     """
 
     def __init__(self, camera_id=0, engine=None):
@@ -29,6 +31,7 @@ class Webcam:
         - Dispozitivul camera cu rezolutie fixa
         - Modele MediaPipe pentru detectie maini si fata
         - Cercuri de detectie si deadzone-uri pentru fiecare zona de control
+        - Optiune de cenzura fata in overlay (`hide_face`)
 
         Args:
             camera_id: indexul device camera (implicit: 0 = prima camera)
@@ -110,6 +113,10 @@ class Webcam:
         self.head_in_deadzone = False
         self.left_hand_in_deadzone = False
         self.right_hand_in_deadzone = False
+
+        # Toggle pentru cenzura vizuala a fetei (overlay circular in jurul capului)
+        # False = fara cenzura, True = aplica masca colorata peste zona fetei
+        self.hide_face = False
 
     def point_in_circle(self, point, circle):
         """Verifica daca un punct se afla in interiorul unui cerc.
@@ -470,10 +477,11 @@ class Webcam:
         Componenta principal care:
         1. Captura frame-uri de la camera
         2. Ruleaza modele MediaPipe pentru detectie maini si fata
-        3. Atualizeaza stari zone de control
+        3. Actualizeaza stari zone de control
         4. Coordoneaza cu GestureEngine pentru procesare
-        5. Deseneaza vizualizari debug
-        6. Afiseaza frame pe ecran
+        5. Aplica optional cenzura vizuala pentru fata
+        6. Deseneaza vizualizari debug
+        7. Afiseaza frame pe ecran
 
         Se opreste cand:
         - Fereastra se inchide
@@ -675,6 +683,24 @@ class Webcam:
                         head_debug_color = (0, 0, 255)
                     else:
                         head_debug_color = (255, 140, 80)
+
+                    # cenzura fata: overlay circular colorat in jurul capului.
+                    # Culoarea se adapteaza dupa starea curenta (deadzone/in_circle/outside)
+                    # pentru a pastra consistenta vizuala cu restul UI-ului.
+                    if self.hide_face:
+                        overlay = frame.copy()
+
+                        if self.head_in_deadzone:
+                            face_overlay_color = (100, 190, 190)
+                        elif self.head_in_circle:
+                            face_overlay_color = (140, 140, 220)
+                        else:
+                            face_overlay_color = (220, 195, 165)
+
+                        cv.circle(overlay, head_center, 220, face_overlay_color, -1)
+
+                        alpha = 1
+                        frame = cv.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
 
                     cv.circle(frame, head_center, 10, head_debug_color, -1)
 

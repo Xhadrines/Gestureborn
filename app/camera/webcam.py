@@ -8,6 +8,7 @@ cenzura vizuala a fetei in overlay.
 import math
 
 import cv2 as cv
+import numpy as np
 
 import mediapipe as mp
 from mediapipe.tasks import python
@@ -117,6 +118,15 @@ class Webcam:
         # Toggle pentru cenzura vizuala a fetei (overlay circular in jurul capului)
         # False = fara cenzura, True = aplica masca colorata peste zona fetei
         self.hide_face = False
+
+        # Mesaje afisate in panoul de stare de sub imaginea camerei
+        self.status_lines = []
+        self.panel_height = 260
+
+    def set_status_lines(self, lines):
+        """Seteaza liniile afisate in panoul de stare."""
+
+        self.status_lines = [line for line in lines if line]
 
     def point_in_circle(self, point, circle):
         """Verifica daca un punct se afla in interiorul unui cerc.
@@ -424,37 +434,50 @@ class Webcam:
             2,
         )
 
-        # Informatii debug afisate pe ecran pentru stare si distante
+    def draw_status_panel(self, frame):
+        """Ataseaza sub frame un panou separat cu starea curenta a gesturilor."""
+
+        height, width = frame.shape[:2]
+        panel_height = self.panel_height
+
+        canvas = np.zeros((height + panel_height, width, 3), dtype=frame.dtype)
+        canvas[:height, :width] = frame
+
+        panel_top = height
+        cv.rectangle(
+            canvas,
+            (0, panel_top),
+            (width - 1, height + panel_height - 1),
+            (18, 18, 18),
+            -1,
+        )
+        cv.line(canvas, (0, panel_top), (width - 1, panel_top), (255, 255, 255), 1)
+
         cv.putText(
-            frame,
-            f"Left Hand Circle: {self.left_hand_in_circle} | Left Hand DeadZone: {self.left_hand_in_deadzone}",
-            (10, 30),
+            canvas,
+            "Status / gestures",
+            (18, panel_top + 28),
             cv.FONT_HERSHEY_SIMPLEX,
-            0.7,
+            0.75,
             (255, 255, 255),
             2,
         )
 
-        cv.putText(
-            frame,
-            f"Right Hand Circle: {self.right_hand_in_circle} | Right Hand DeadZone: {self.right_hand_in_deadzone}",
-            (10, 60),
-            cv.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 255, 255),
-            2,
-        )
+        lines = self.status_lines or ["No gesture detected"]
+        y = panel_top + 58
+        for line in lines[:8]:
+            cv.putText(
+                canvas,
+                line,
+                (18, y),
+                cv.FONT_HERSHEY_SIMPLEX,
+                0.62,
+                (230, 230, 230),
+                2,
+            )
+            y += 24
 
-        # Afiaseaza separat starea pentru cap
-        cv.putText(
-            frame,
-            f"Head Circle: {self.head_in_circle} | Head DeadZone: {self.head_in_deadzone}",
-            (10, 90),
-            cv.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (255, 255, 255),
-            2,
-        )
+        return canvas
 
     def are_all_detected_in_circles(self):
         """Verifica daca elementele detectate sunt in zonele cerute.
@@ -490,7 +513,7 @@ class Webcam:
         """
 
         cv.namedWindow(self.window_name, cv.WINDOW_NORMAL)
-        cv.resizeWindow(self.window_name, 1280, 720)
+        cv.resizeWindow(self.window_name, 1280, 920)
 
         frame_id = 0
 
@@ -581,22 +604,27 @@ class Webcam:
                 # Mana este in cerc doar daca se afla in zona si nu in deadzone
                 self.right_hand_in_circle = in_circle and not in_deadzone
 
+            if self.engine:
+                self.set_status_lines(
+                    self.engine.build_status_lines(
+                        face_result,
+                        left_hand,
+                        left_center,
+                        right_hand,
+                        right_center,
+                    )
+                )
+
             # Deseneaza informatiile pentru maini pe frame
             if hand_result.hand_landmarks:
-                for hand, label, circle, deadzone, in_circle, in_deadzone in (
+                for hand, in_circle, in_deadzone in (
                     (
                         left_hand,
-                        "LH",
-                        self.left_hand_circle,
-                        self.left_hand_deadzone,
                         self.left_hand_in_circle,
                         self.left_hand_in_deadzone,
                     ),
                     (
                         right_hand,
-                        "RH",
-                        self.right_hand_circle,
-                        self.right_hand_deadzone,
                         self.right_hand_in_circle,
                         self.right_hand_in_deadzone,
                     ),
@@ -615,37 +643,8 @@ class Webcam:
                     else:
                         hand_point_color = (0, 255, 0)  # Verde
 
-                    dist_relevant = math.sqrt(
-                        (hand_center[0] - circle["center"][0]) ** 2
-                        + (hand_center[1] - circle["center"][1]) ** 2
-                    )
-                    dist_deadzone = math.sqrt(
-                        (hand_center[0] - deadzone["center"][0]) ** 2
-                        + (hand_center[1] - deadzone["center"][1]) ** 2
-                    )
-
                     # Deseneaza centrul mainii cu culoarea zonei curente
                     cv.circle(frame, hand_center, 8, hand_point_color, -1)
-
-                    # Afiseaza pozitia mainii si distantele utile
-                    cv.putText(
-                        frame,
-                        f"{label}: ({hand_center[0]}, {hand_center[1]})",
-                        (hand_center[0] - 80, hand_center[1] - 30),
-                        cv.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        hand_point_color,
-                        1,
-                    )
-                    cv.putText(
-                        frame,
-                        f"Dist: {int(dist_relevant)}, DZ: {int(dist_deadzone)}",
-                        (hand_center[0] - 80, hand_center[1] - 10),
-                        cv.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        hand_point_color,
-                        1,
-                    )
 
                     # Deseneaza fiecare landmark al mainii
                     for lm in hand:
@@ -704,40 +703,11 @@ class Webcam:
 
                     cv.circle(frame, head_center, 10, head_debug_color, -1)
 
-                    # Calculeaza distanta fata de cercul capului
-                    dist_relevant = math.sqrt(
-                        (head_center[0] - self.head_circle["center"][0]) ** 2
-                        + (head_center[1] - self.head_circle["center"][1]) ** 2
-                    )
-                    # Calculeaza distanta fata de deadzone-ul capului
-                    dist_deadzone = math.sqrt(
-                        (head_center[0] - self.head_deadzone["center"][0]) ** 2
-                        + (head_center[1] - self.head_deadzone["center"][1]) ** 2
-                    )
-
-                    # Afiseaza pozitia capului si distantele relevante
-                    cv.putText(
-                        frame,
-                        f"Head: ({head_center[0]}, {head_center[1]})",
-                        (head_center[0] - 80, head_center[1] - 30),
-                        cv.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        head_debug_color,
-                        1,
-                    )
-                    cv.putText(
-                        frame,
-                        f"Dist: {int(dist_relevant)}, DZ: {int(dist_deadzone)}",
-                        (head_center[0] - 40, head_center[1] - 10),
-                        cv.FONT_HERSHEY_SIMPLEX,
-                        0.5,
-                        head_debug_color,
-                        1,
-                    )
-
             self.draw_circles(frame)
 
-            cv.imshow(self.window_name, frame)
+            display_frame = self.draw_status_panel(frame)
+
+            cv.imshow(self.window_name, display_frame)
 
             cv.waitKey(1)
 

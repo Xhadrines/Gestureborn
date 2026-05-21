@@ -116,8 +116,8 @@ class HandKeyboardEngine:
         self.pinky_hold_seconds = 1
         # Comportament: apasa ENTER o data dupa delay
         self.delay_left_pinky = True
-        # Comportament: tine Z apasata dupa delay
-        self.delay_right_pinky = True
+        # Comportament: tine Z apasata imediat (fara delay)
+        self.delay_right_pinky = False
 
     def _sync_keys(self, current_keys, target_keys):
         """Sincronizeaza tastele: elibereaza cele nefiind necesare, apasa cele noi.
@@ -174,6 +174,11 @@ class HandKeyboardEngine:
 
         return targets
 
+    def get_axis_targets(self, center, circle, deadzone):
+        """Wrapper public pentru directiile WASD active."""
+
+        return self._get_axis_targets(center, circle, deadzone)
+
     def _get_locked_target(self, current_target, center, circle, deadzone, mapping):
         """Determina tasta bloc (SPACE, CTRL, ALT, SHIFT) cu stabilitate.
 
@@ -225,6 +230,13 @@ class HandKeyboardEngine:
                 return current_target
 
         return target
+
+    def get_locked_target(self, current_target, center, circle, deadzone, mapping):
+        """Wrapper public pentru tasta bloc activa."""
+
+        return self._get_locked_target(
+            current_target, center, circle, deadzone, mapping
+        )
 
     def _sync_hold_key(self, current_state, target_state, key):
         """Mentine sau elibereaza o singura tasta in functie de stare.
@@ -300,6 +312,11 @@ class HandKeyboardEngine:
         if vertical_strength <= radius:
             return None
         return "S" if dy > 0 else "W"
+
+    def get_single_axis_target(self, center, circle, deadzone):
+        """Wrapper public pentru tasta WASD de pe axa dominanta."""
+
+        return self._get_single_axis_target(center, circle, deadzone)
 
     def _process_left_tap_mode(self, center, circle, deadzone, now):
         """Proceseaza WASD in modul tap pentru mana stanga.

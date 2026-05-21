@@ -77,6 +77,11 @@ class HeadMouseEngine:
         speed = min_speed + ratio * (max_speed - min_speed)
         return max(1, int(round(speed)))
 
+    def get_speed(self, point, circle, deadzone):
+        """Wrapper public pentru viteza calculata a capului."""
+
+        return self._get_speed(point, circle, deadzone)
+
     def process(self, point, circle, deadzone):
         """Proceseaza pozitia capului si comanda miscari mouse.
 
